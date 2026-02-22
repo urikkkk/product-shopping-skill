@@ -3,6 +3,7 @@
 Usage:
     python -m scripts.run_pipeline --zip 11201 --out xlsx
     python -m scripts.run_pipeline --zip 11201 --out google_sheets --sheet-id YOUR_SHEET_ID
+    python -m scripts.run_pipeline --out text --mode seed
     python -m scripts.run_pipeline --dry-run
 """
 
@@ -19,14 +20,20 @@ from rich.table import Table
 
 from src.adapters import get_adapter, list_adapters
 from src.enrichment import enrich_top_products
+from src.filters import apply_filters
 from src.output import write_csv, write_google_sheets, write_xlsx
-from src.schema import Product
+from src.output_formats import format_json, format_text
+from src.preferences import apply_preferences
+from src.schema import Product, normalize_price
 from src.scoring import ScoreBreakdown, rank_products
 
 console = Console()
 
 
-def setup_logging(verbose: bool = False):
+def setup_logging(verbose: bool = False, stderr: bool = False):
+    global console
+    if stderr:
+        console = Console(stderr=True)
     level = logging.DEBUG if verbose else logging.INFO
     logging.basicConfig(
         level=level,
@@ -53,7 +60,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     )
     parser.add_argument(
         "--out",
-        choices=["xlsx", "csv", "google_sheets", "all"],
+        choices=["xlsx", "csv", "google_sheets", "all", "text", "json"],
         default="xlsx",
         help="Output format (default: xlsx)",
     )
@@ -62,13 +69,25 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--top-n", type=int, default=10, help="Number of top picks (default: 10)")
 
     # Filters
-    parser.add_argument("--budget", type=float, default=None, help="Max budget in USD")
+    parser.add_argument("--budget", type=str, default=None, help="Max budget (e.g. 200 or $200)")
     parser.add_argument("--wireless", choices=["yes", "no"], default=None, help="Filter wireless")
     parser.add_argument("--layout", default=None, help="Filter by layout (split, alice, ortho)")
-    parser.add_argument("--max-price", type=float, default=None, help="Alias for --budget")
+    parser.add_argument("--max-price", type=str, default=None, help="Alias for --budget")
     parser.add_argument("--min-rating-count", type=int, default=0, help="Min review count")
 
+    # Preferences
+    parser.add_argument(
+        "--preferences", default=None,
+        help="Comma-separated preference keywords to boost (e.g. 'Keychron, split, QMK')",
+    )
+
     # Modes
+    parser.add_argument(
+        "--mode",
+        choices=["online", "seed", "auto"],
+        default="auto",
+        help="Data source mode: online (requires API keys), seed (curated data), auto (default)",
+    )
     parser.add_argument(
         "--adapters",
         nargs="+",
@@ -76,43 +95,25 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help=f"Adapters to use (available: {', '.join(list_adapters())})",
     )
     parser.add_argument("--csv-file", default=None, help="Path to BYO CSV file (adds csv adapter)")
-    parser.add_argument("--use-api", action="store_true", help="Prefer API mode for adapters")
+    # Deprecated: kept for backward compatibility
+    parser.add_argument(
+        "--use-api", action="store_true", default=False,
+        help=argparse.SUPPRESS,  # Hidden — use --mode online instead
+    )
     parser.add_argument("--dry-run", action="store_true", help="Show plan without executing")
     parser.add_argument("-v", "--verbose", action="store_true", help="Verbose logging")
 
-    return parser.parse_args(argv)
+    args = parser.parse_args(argv)
 
+    # Map deprecated --use-api to --mode online
+    if args.use_api and args.mode == "auto":
+        args.mode = "online"
 
-def apply_filters(products: list[Product], args: argparse.Namespace) -> list[Product]:
-    """Apply user-specified filters."""
-    budget = args.budget or args.max_price
-    filtered = products
+    # Normalize budget from string (handles "$200" format)
+    raw_budget = args.budget or args.max_price
+    args.budget_value = normalize_price(raw_budget) if raw_budget else None
 
-    if budget:
-        filtered = [p for p in filtered if p.price_usd <= budget]
-
-    if args.wireless == "yes":
-        filtered = [
-            p for p in filtered
-            if any(kw in p.connectivity.lower() for kw in ("bluetooth", "2.4"))
-        ]
-    elif args.wireless == "no":
-        filtered = [
-            p for p in filtered
-            if not any(kw in p.connectivity.lower() for kw in ("bluetooth", "2.4"))
-        ]
-
-    if args.layout:
-        layout_kw = args.layout.lower()
-        filtered = [
-            p for p in filtered
-            if layout_kw in p.layout_size.lower() or layout_kw in p.category.lower()
-        ]
-
-    if args.min_rating_count:
-        filtered = [p for p in filtered if p.rating_count >= args.min_rating_count]
-
-    return filtered
+    return args
 
 
 def print_summary(
@@ -145,21 +146,24 @@ def print_summary(
 
 def main(argv: list[str] | None = None):
     args = parse_args(argv)
-    setup_logging(args.verbose)
+    # When outputting to stdout (text/json), redirect console/logging to stderr
+    stderr_mode = args.out in ("text", "json")
+    setup_logging(args.verbose, stderr=stderr_mode)
     logger = logging.getLogger(__name__)
 
     console.print(
         "\n[bold]Keyboard Shopping Agent[/bold] v0.1.0\n"
         f"  ZIP: {args.zip}  |  Query: {args.query}  |  Output: {args.out}\n"
-        f"  Adapters: {', '.join(args.adapters)}\n"
+        f"  Adapters: {', '.join(args.adapters)}  |  Mode: {args.mode}\n"
     )
 
     if args.dry_run:
         console.print("[yellow]DRY RUN[/yellow] — showing plan only, no output will be written.\n")
         console.print(f"  Would search: {', '.join(args.adapters)}")
         console.print(f"  Target: ~{args.target} products")
-        console.print(f"  Filters: budget={args.budget}, wireless={args.wireless}, "
+        console.print(f"  Filters: budget={args.budget_value}, wireless={args.wireless}, "
                       f"layout={args.layout}")
+        console.print(f"  Preferences: {args.preferences}")
         console.print(f"  Output: {args.out} -> {args.output_dir}/")
         return
 
@@ -174,7 +178,7 @@ def main(argv: list[str] | None = None):
 
     for name in adapter_names:
         try:
-            kwargs = {}
+            kwargs: dict = {"mode": args.mode}
             if name == "csv":
                 kwargs["file_path"] = args.csv_file
             adapter = get_adapter(name, **kwargs)
@@ -196,7 +200,13 @@ def main(argv: list[str] | None = None):
         sys.exit(1)
 
     # ── Step 2: Filter ───────────────────────────────────────────────────────
-    filtered = apply_filters(all_products, args)
+    filtered = apply_filters(
+        all_products,
+        budget=args.budget_value,
+        wireless=args.wireless,
+        layout=args.layout,
+        min_rating_count=args.min_rating_count,
+    )
     if len(filtered) < len(all_products):
         console.print(f"[bold]Step 2:[/bold] Filtered to {len(filtered)} products\n")
     else:
@@ -204,35 +214,60 @@ def main(argv: list[str] | None = None):
 
     # ── Step 3: Rank ─────────────────────────────────────────────────────────
     console.print(f"[bold]Step 3:[/bold] Ranking top {args.top_n}...")
-    top10 = rank_products(filtered, top_n=args.top_n)
-    print_summary(top10, len(filtered))
+    top_n = rank_products(filtered, top_n=args.top_n)
+
+    # Apply preferences if specified
+    if args.preferences:
+        top_n = apply_preferences(top_n, args.preferences)
+        console.print(f"  Applied preference boost for: {args.preferences}")
+
+    print_summary(top_n, len(filtered))
 
     # ── Step 4: Enrich ───────────────────────────────────────────────────────
-    console.print(f"\n[bold]Step 4:[/bold] Enriching top {len(top10)} with professional reviews...")
-    top_products = [p for p, _ in top10]
+    console.print(f"\n[bold]Step 4:[/bold] Enriching top {len(top_n)} with professional reviews...")
+    top_products = [p for p, _ in top_n]
     reviews = enrich_top_products(top_products)
     enriched_count = sum(1 for revs in reviews.values() if revs)
-    console.print(f"  Found reviews for {enriched_count}/{len(top10)} products\n")
+    console.print(f"  Found reviews for {enriched_count}/{len(top_n)} products\n")
 
     # ── Step 5: Output ───────────────────────────────────────────────────────
     console.print(f"[bold]Step 5:[/bold] Writing output ({args.out})...")
 
-    if args.out in ("xlsx", "all"):
-        xlsx_path = write_xlsx(filtered, top10, reviews, output_dir=args.output_dir)
-        console.print(f"  XLSX: {xlsx_path}")
+    metadata = {
+        "query": args.query,
+        "mode": args.mode,
+        "budget": args.budget_value,
+        "adapters": adapter_names,
+        "elapsed_seconds": round(elapsed, 1),
+        "total_collected": len(all_products),
+        "total_filtered": len(filtered),
+    }
 
-    if args.out in ("csv", "all", "xlsx"):
+    if args.out == "text":
+        print(format_text(top_n, reviews, metadata))
+
+    elif args.out == "json":
+        print(format_json(top_n, reviews, metadata))
+
+    elif args.out in ("xlsx", "all"):
+        xlsx_path = write_xlsx(filtered, top_n, reviews, output_dir=args.output_dir)
+        console.print(f"  XLSX: {xlsx_path}")
+        if args.out in ("all", "xlsx"):
+            csv_path = write_csv(filtered, output_dir=args.output_dir)
+            console.print(f"  CSV:  {csv_path}")
+
+    elif args.out == "csv":
         csv_path = write_csv(filtered, output_dir=args.output_dir)
         console.print(f"  CSV:  {csv_path}")
 
-    if args.out in ("google_sheets", "all"):
+    elif args.out == "google_sheets":
         try:
-            url = write_google_sheets(filtered, top10, reviews, sheet_id=args.sheet_id)
+            url = write_google_sheets(filtered, top_n, reviews, sheet_id=args.sheet_id)
             console.print(f"  Sheet: {url}")
         except Exception:
             logger.exception("Google Sheets output failed")
             console.print("  [yellow]Google Sheets failed — falling back to XLSX[/yellow]")
-            xlsx_path = write_xlsx(filtered, top10, reviews, output_dir=args.output_dir)
+            xlsx_path = write_xlsx(filtered, top_n, reviews, output_dir=args.output_dir)
             console.print(f"  XLSX: {xlsx_path}")
 
     console.print("\n[bold green]Done![/bold green]\n")

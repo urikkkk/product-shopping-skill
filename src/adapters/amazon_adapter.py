@@ -54,13 +54,23 @@ class AmazonAdapter(BaseAdapter):
 
     name = "amazon"
     _min_delay = 1.5
+    _env_vars = ["AMAZON_ACCESS_KEY", "AMAZON_SECRET_KEY", "AMAZON_PARTNER_TAG"]
 
     def __init__(self, **kwargs):
+        # Extract mode before super().__init__ since Amazon has custom key logic
+        mode = kwargs.get("mode", "auto")
         super().__init__(**kwargs)
         self._access_key = os.environ.get("AMAZON_ACCESS_KEY")
         self._secret_key = os.environ.get("AMAZON_SECRET_KEY")
         self._partner_tag = os.environ.get("AMAZON_PARTNER_TAG")
-        self.use_api = bool(self._access_key and self._secret_key and self._partner_tag)
+        has_keys = bool(self._access_key and self._secret_key and self._partner_tag)
+        if mode == "online" and not has_keys:
+            from .base import MissingAPIKeyError
+            raise MissingAPIKeyError(self.name, self._env_vars)
+        elif mode == "seed":
+            self.use_api = False
+        else:  # auto
+            self.use_api = has_keys
 
     def search(
         self,

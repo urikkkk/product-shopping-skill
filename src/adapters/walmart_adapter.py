@@ -29,6 +29,7 @@ class WalmartAdapter(BaseAdapter):
 
     name = "walmart"
     _min_delay = 1.0
+    _env_vars = ["WALMART_API_KEY"]
 
     def search(
         self,
@@ -50,7 +51,6 @@ class WalmartAdapter(BaseAdapter):
                 params={"query": query, "numItems": str(min(max_results, 25))},
                 headers={"WM_SEC.ACCESS_TOKEN": self.api_key},
             )
-            resp.raise_for_status()
             data = resp.json()
             for item in data.get("items", []):
                 products.append(
