@@ -29,6 +29,7 @@ from src.output_formats import format_json, format_text
 from src.preferences import apply_preferences
 from src.schema import normalize_price
 from src.scoring import rank_products
+from src.scoring_profile import get_scoring_profile
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
@@ -69,6 +70,9 @@ def main(argv: list[str] | None = None) -> int:
     budget = normalize_price(args.budget) if args.budget else None
     start = time.time()
 
+    # Determine scoring profile
+    profile = get_scoring_profile(args.query)
+
     # Collect from all adapters
     all_products = []
     adapter_names = ["amazon", "bestbuy", "walmart", "nimble"]
@@ -99,11 +103,14 @@ def main(argv: list[str] | None = None) -> int:
     )
 
     # Rank
-    ranked = rank_products(filtered, top_n=args.max_results)
+    ranked = rank_products(filtered, top_n=args.max_results, profile=profile)
 
     # Apply preferences
     if args.preferences:
-        ranked = apply_preferences(ranked, args.preferences)
+        ranked = apply_preferences(
+            ranked, args.preferences,
+            preference_fields=profile.preference_fields or None,
+        )
 
     # Enrich
     top_products = [p for p, _ in ranked]
@@ -122,9 +129,9 @@ def main(argv: list[str] | None = None) -> int:
     }
 
     if args.output == "json":
-        print(format_json(ranked, reviews, metadata))
+        print(format_json(ranked, reviews, metadata, profile=profile))
     else:
-        print(format_text(ranked, reviews, metadata))
+        print(format_text(ranked, reviews, metadata, profile=profile))
 
     return 0
 

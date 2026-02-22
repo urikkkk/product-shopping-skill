@@ -14,10 +14,23 @@ from src.schema import Product
 from src.scoring import ScoreBreakdown, W_BUILD, W_ERGO, W_REVIEW, W_VALUE
 
 
+def _get_profile_dimensions(profile: Any | None) -> list[tuple[str, str, float]]:
+    """Return list of (name, display_name, weight) from a profile, or keyboard defaults."""
+    if profile is not None:
+        return [(d.name, d.display_name, d.weight) for d in profile.dimensions]
+    return [
+        ("ergonomics", "Ergo", W_ERGO),
+        ("reviews", "Review", W_REVIEW),
+        ("value", "Value", W_VALUE),
+        ("build", "Build", W_BUILD),
+    ]
+
+
 def format_text(
     ranked: list[tuple[Product, ScoreBreakdown]],
     reviews: dict[str, list[ProReview]],
     metadata: dict[str, Any] | None = None,
+    profile: Any | None = None,
 ) -> str:
     """Format ranked results as a markdown table with score breakdown.
 
@@ -25,12 +38,14 @@ def format_text(
         ranked: List of (Product, ScoreBreakdown) tuples from rank_products().
         reviews: Dict mapping product title to list of ProReview.
         metadata: Optional dict with query, mode, budget, etc.
+        profile: Optional ScoringProfile for dynamic dimension headers.
 
     Returns:
         Markdown-formatted string suitable for stdout.
     """
     meta = metadata or {}
     lines: list[str] = []
+    dims = _get_profile_dimensions(profile)
 
     # Header line
     parts = []
@@ -44,26 +59,26 @@ def format_text(
     lines.append(f"**Product Shopping Results** | {' | '.join(parts)}")
     lines.append("")
 
-    # Table header
+    # Table header — dynamic dimension columns
+    dim_headers = " | ".join(d[1] for d in dims)
     lines.append(
-        "| # | Product | Brand | Price | Score | Ergo | Review | Value | Build | Store |"
+        f"| # | Product | Brand | Price | Score | {dim_headers} | Store |"
     )
+    sep_parts = " | ".join("---" for _ in dims)
     lines.append(
-        "|---|---------|-------|-------|-------|------|--------|-------|-------|-------|"
+        f"|---|---------|-------|-------|-------|{sep_parts}|-------|"
     )
 
     # Table rows
     for i, (p, s) in enumerate(ranked, 1):
+        dim_vals = " | ".join(str(s.dimensions.get(d[0], 0.0)) for d in dims)
         lines.append(
             f"| {i} "
             f"| {p.product_title} "
             f"| {p.brand} "
             f"| ${p.price_usd:.0f} "
             f"| {s.total} "
-            f"| {s.ergonomics} "
-            f"| {s.reviews} "
-            f"| {s.value} "
-            f"| {s.build} "
+            f"| {dim_vals} "
             f"| {p.source_site} |"
         )
 
@@ -82,11 +97,9 @@ def format_text(
                     lines.append(f"- _{r.source}_: {r.verdict}")
                 lines.append("")
 
-    # Footer
-    lines.append(
-        f"_Scoring weights: Ergonomics {W_ERGO:.0%}, Reviews {W_REVIEW:.0%}, "
-        f"Value {W_VALUE:.0%}, Build {W_BUILD:.0%}_"
-    )
+    # Footer — dynamic weights
+    weight_parts = ", ".join(f"{d[1]} {d[2]:.0%}" for d in dims)
+    lines.append(f"_Scoring weights: {weight_parts}_")
 
     return "\n".join(lines)
 
@@ -95,6 +108,7 @@ def format_json(
     ranked: list[tuple[Product, ScoreBreakdown]],
     reviews: dict[str, list[ProReview]],
     metadata: dict[str, Any] | None = None,
+    profile: Any | None = None,
 ) -> str:
     """Format ranked results as structured JSON.
 
@@ -102,17 +116,14 @@ def format_json(
         ranked: List of (Product, ScoreBreakdown) tuples from rank_products().
         reviews: Dict mapping product title to list of ProReview.
         metadata: Optional dict with query, mode, budget, timing, etc.
+        profile: Optional ScoringProfile for dynamic dimension weights.
 
     Returns:
         JSON string with metadata and results keys.
     """
     meta = metadata or {}
-    meta["scoring_weights"] = {
-        "ergonomics": W_ERGO,
-        "reviews": W_REVIEW,
-        "value": W_VALUE,
-        "build": W_BUILD,
-    }
+    dims = _get_profile_dimensions(profile)
+    meta["scoring_weights"] = {d[0]: d[2] for d in dims}
     meta["result_count"] = len(ranked)
 
     results: list[dict[str, Any]] = []
@@ -134,13 +145,7 @@ def format_json(
             "programmable": p.programmable,
             "ergonomic_features": p.ergonomic_features,
             "category": p.category,
-            "scores": {
-                "total": s.total,
-                "ergonomics": s.ergonomics,
-                "reviews": s.reviews,
-                "value": s.value,
-                "build": s.build,
-            },
+            "scores": {"total": s.total, **s.dimensions},
             "pro_reviews": [
                 {
                     "source": r.source,

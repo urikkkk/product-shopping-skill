@@ -26,6 +26,7 @@ from src.output_formats import format_json, format_text
 from src.preferences import apply_preferences
 from src.schema import Product, normalize_price
 from src.scoring import ScoreBreakdown, rank_products
+from src.scoring_profile import get_scoring_profile
 
 console = Console()
 
@@ -199,6 +200,13 @@ def main(argv: list[str] | None = None):
         console.print("[red]No products collected. Check adapter configuration.[/red]")
         sys.exit(1)
 
+    # ── Step 1.5: Scoring profile ─────────────────────────────────────────────
+    console.print("[bold]Step 1.5:[/bold] Determining scoring profile...")
+    profile = get_scoring_profile(args.query)
+    dim_names = ", ".join(d.display_name for d in profile.dimensions)
+    console.print(f"  Category: {profile.category}")
+    console.print(f"  Dimensions: {dim_names}\n")
+
     # ── Step 2: Filter ───────────────────────────────────────────────────────
     filtered = apply_filters(
         all_products,
@@ -214,11 +222,14 @@ def main(argv: list[str] | None = None):
 
     # ── Step 3: Rank ─────────────────────────────────────────────────────────
     console.print(f"[bold]Step 3:[/bold] Ranking top {args.top_n}...")
-    top_n = rank_products(filtered, top_n=args.top_n)
+    top_n = rank_products(filtered, top_n=args.top_n, profile=profile)
 
     # Apply preferences if specified
     if args.preferences:
-        top_n = apply_preferences(top_n, args.preferences)
+        top_n = apply_preferences(
+            top_n, args.preferences,
+            preference_fields=profile.preference_fields or None,
+        )
         console.print(f"  Applied preference boost for: {args.preferences}")
 
     print_summary(top_n, len(filtered))
@@ -244,30 +255,37 @@ def main(argv: list[str] | None = None):
     }
 
     if args.out == "text":
-        print(format_text(top_n, reviews, metadata))
+        print(format_text(top_n, reviews, metadata, profile=profile))
 
     elif args.out == "json":
-        print(format_json(top_n, reviews, metadata))
+        print(format_json(top_n, reviews, metadata, profile=profile))
 
     elif args.out in ("xlsx", "all"):
-        xlsx_path = write_xlsx(filtered, top_n, reviews, output_dir=args.output_dir)
+        xlsx_path = write_xlsx(
+            filtered, top_n, reviews, output_dir=args.output_dir, profile=profile,
+        )
         console.print(f"  XLSX: {xlsx_path}")
         if args.out in ("all", "xlsx"):
-            csv_path = write_csv(filtered, output_dir=args.output_dir)
+            csv_path = write_csv(filtered, output_dir=args.output_dir, profile=profile)
             console.print(f"  CSV:  {csv_path}")
 
     elif args.out == "csv":
-        csv_path = write_csv(filtered, output_dir=args.output_dir)
+        csv_path = write_csv(filtered, output_dir=args.output_dir, profile=profile)
         console.print(f"  CSV:  {csv_path}")
 
     elif args.out == "google_sheets":
         try:
-            url = write_google_sheets(filtered, top_n, reviews, sheet_id=args.sheet_id)
+            url = write_google_sheets(
+                all_products, top_n, reviews, sheet_id=args.sheet_id, profile=profile,
+            )
             console.print(f"  Sheet: {url}")
+            console.print(f"  Stored {len(all_products)} products across 3 tabs")
         except Exception:
             logger.exception("Google Sheets output failed")
             console.print("  [yellow]Google Sheets failed — falling back to XLSX[/yellow]")
-            xlsx_path = write_xlsx(filtered, top_n, reviews, output_dir=args.output_dir)
+            xlsx_path = write_xlsx(
+                filtered, top_n, reviews, output_dir=args.output_dir, profile=profile,
+            )
             console.print(f"  XLSX: {xlsx_path}")
 
     console.print("\n[bold green]Done![/bold green]\n")

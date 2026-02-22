@@ -26,7 +26,7 @@ def _make_ranked():
         category="Alice",
         product_url="https://example.com/q10",
     )
-    s1 = ScoreBreakdown(total=72.5, ergonomics=30.0, reviews=63.0, value=56.2, build=85.0)
+    s1 = ScoreBreakdown(total=72.5, dimensions={"ergonomics": 30.0, "reviews": 63.0, "value": 56.2, "build": 85.0})
 
     p2 = Product(
         product_title="Logitech Ergo K860",
@@ -42,7 +42,7 @@ def _make_ranked():
         category="Wave/Ergo",
         product_url="https://example.com/k860",
     )
-    s2 = ScoreBreakdown(total=55.3, ergonomics=50.0, reviews=91.6, value=74.2, build=0.0)
+    s2 = ScoreBreakdown(total=55.3, dimensions={"ergonomics": 50.0, "reviews": 91.6, "value": 74.2, "build": 0.0})
 
     return [(p1, s1), (p2, s2)]
 

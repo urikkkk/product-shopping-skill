@@ -24,7 +24,7 @@ def _make_scored(
         connectivity=connectivity,
         category=category,
     )
-    s = ScoreBreakdown(total=total, ergonomics=40.0, reviews=30.0, value=20.0, build=10.0)
+    s = ScoreBreakdown(total=total, dimensions={"ergonomics": 40.0, "reviews": 30.0, "value": 20.0, "build": 10.0})
     return (p, s)
 
 
