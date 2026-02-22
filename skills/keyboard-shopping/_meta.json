@@ -1,6 +1,0 @@
-{
-  "name": "keyboard-shopping",
-  "version": "0.1.0",
-  "entry": "scripts/search.py",
-  "tags": ["shopping", "keyboards", "ergonomic", "comparison"]
-}

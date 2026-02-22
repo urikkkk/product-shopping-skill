@@ -152,7 +152,7 @@ def main(argv: list[str] | None = None):
     logger = logging.getLogger(__name__)
 
     console.print(
-        "\n[bold]Keyboard Shopping Agent[/bold] v0.1.0\n"
+        "\n[bold]Product Shopping Skill[/bold] v0.1.0\n"
         f"  ZIP: {args.zip}  |  Query: {args.query}  |  Output: {args.out}\n"
         f"  Adapters: {', '.join(args.adapters)}  |  Mode: {args.mode}\n"
     )

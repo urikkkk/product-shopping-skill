@@ -41,7 +41,7 @@ def format_text(
     if meta.get("mode"):
         parts.append(f"Mode: {meta['mode']}")
     parts.append(f"Results: {len(ranked)}")
-    lines.append(f"**Keyboard Shopping Results** | {' | '.join(parts)}")
+    lines.append(f"**Product Shopping Results** | {' | '.join(parts)}")
     lines.append("")
 
     # Table header

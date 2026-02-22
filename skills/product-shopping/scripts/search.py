@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
-"""OpenClaw skill entry point for keyboard shopping.
+"""OpenClaw skill entry point for product shopping.
 
-Wraps the keyboard-shopping-agent pipeline with a shopping-expert-compatible CLI
+Wraps the product-shopping-skill pipeline with a standardized CLI
 that outputs to stdout as text (markdown) or JSON.
 
 Usage:
-    python skills/keyboard-shopping/scripts/search.py "ergonomic split keyboard" --mode seed --output text
-    python skills/keyboard-shopping/scripts/search.py "mechanical keyboard" --budget "$200" --output json
+    python skills/product-shopping/scripts/search.py "ergonomic split keyboard" --mode seed --output text
+    python skills/product-shopping/scripts/search.py "mechanical keyboard" --budget "$200" --output json
 """
 
 from __future__ import annotations
@@ -33,8 +33,8 @@ from src.scoring import rank_products
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        prog="keyboard-shopping",
-        description="Search, score, and compare ergonomic keyboards across retailers.",
+        prog="product-shopping",
+        description="Search, score, and compare products across multiple retailers.",
     )
     parser.add_argument(
         "query", nargs="?", default="ergonomic mechanical keyboard",
@@ -54,10 +54,10 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     )
     parser.add_argument(
         "--preferences", default=None,
-        help="Comma-separated preference keywords to boost (e.g. 'Keychron, split, QMK')",
+        help="Comma-separated preference keywords to boost in ranking",
     )
     parser.add_argument("--wireless", choices=["yes", "no"], default=None, help="Filter wireless")
-    parser.add_argument("--layout", default=None, help="Filter by layout (split, alice, ortho)")
+    parser.add_argument("--layout", default=None, help="Filter by layout keyword")
     parser.add_argument("--location", default="11201", help="Shipping ZIP code (default: 11201)")
     return parser.parse_args(argv)
 

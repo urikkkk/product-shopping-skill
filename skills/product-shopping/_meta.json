@@ -1,0 +1,6 @@
+{
+  "name": "product-shopping",
+  "version": "0.1.0",
+  "entry": "scripts/search.py",
+  "tags": ["shopping", "product-comparison", "scoring", "multi-retailer"]
+}
