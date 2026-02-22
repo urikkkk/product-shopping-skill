@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ergonomic Keyboard Finder</title>
+<style>
+  :root {
+    --bg: #0f0f0f;
+    --card: #1a1a2e;
+    --accent: #e94560;
+    --accent2: #0f3460;
+    --text: #eee;
+    --muted: #888;
+    --border: #2a2a3e;
+    --gold: #d4af37;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+
+  header { background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); padding: 2rem; text-align: center; border-bottom: 2px solid var(--accent); }
+  header h1 { font-size: 2rem; margin-bottom: 0.3rem; }
+  header h1 span { color: var(--accent); }
+  header p { color: var(--muted); font-size: 0.95rem; }
+
+  .filters { max-width: 1200px; margin: 1.5rem auto; padding: 0 1rem; display: flex; flex-wrap: wrap; gap: 0.75rem; align-items: flex-end; }
+  .filter-group { display: flex; flex-direction: column; gap: 0.25rem; }
+  .filter-group label { font-size: 0.75rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; }
+  .filter-group select, .filter-group input { background: var(--card); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 0.5rem 0.75rem; font-size: 0.9rem; outline: none; }
+  .filter-group select:focus, .filter-group input:focus { border-color: var(--accent); }
+  .filter-group input[type="range"] { width: 160px; accent-color: var(--accent); }
+  .budget-val { font-size: 0.85rem; color: var(--accent); font-weight: 600; min-width: 50px; }
+
+  .results-bar { max-width: 1200px; margin: 0.75rem auto; padding: 0 1rem; display: flex; justify-content: space-between; align-items: center; }
+  .results-bar span { color: var(--muted); font-size: 0.85rem; }
+  .sort-btn { background: none; border: 1px solid var(--border); color: var(--text); padding: 0.35rem 0.75rem; border-radius: 4px; cursor: pointer; font-size: 0.8rem; }
+  .sort-btn.active { border-color: var(--accent); color: var(--accent); }
+
+  .grid { max-width: 1200px; margin: 1rem auto; padding: 0 1rem; display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 1rem; padding-bottom: 3rem; }
+
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 1.25rem; transition: border-color 0.2s, transform 0.2s; position: relative; }
+  .card:hover { border-color: var(--accent); transform: translateY(-2px); }
+  .card.top3 { border-color: var(--gold); }
+  .card.top3::before { content: attr(data-rank); position: absolute; top: -10px; right: 12px; background: var(--gold); color: #000; font-weight: 700; font-size: 0.75rem; padding: 2px 8px; border-radius: 4px; }
+
+  .card-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.5rem; }
+  .card-title { font-size: 1.05rem; font-weight: 600; line-height: 1.3; flex: 1; }
+  .card-price { font-size: 1.2rem; font-weight: 700; color: var(--accent); white-space: nowrap; margin-left: 0.75rem; }
+
+  .card-brand { font-size: 0.8rem; color: var(--muted); margin-bottom: 0.6rem; }
+
+  .card-tags { display: flex; flex-wrap: wrap; gap: 0.35rem; margin-bottom: 0.6rem; }
+  .tag { font-size: 0.7rem; padding: 2px 8px; border-radius: 3px; background: var(--accent2); color: #aac; }
+  .tag.ergo { background: #1b4332; color: #95d5b2; }
+  .tag.mech { background: #3c1518; color: #f4a261; }
+  .tag.wireless { background: #1d3557; color: #a8dadc; }
+
+  .card-stats { display: flex; gap: 1rem; margin-bottom: 0.5rem; font-size: 0.8rem; flex-wrap: wrap; }
+  .stat { display: flex; flex-direction: column; }
+  .stat-label { color: var(--muted); font-size: 0.65rem; text-transform: uppercase; }
+  .stat-value { font-weight: 600; }
+
+  .score-bar { height: 4px; background: var(--border); border-radius: 2px; margin-bottom: 0.5rem; overflow: hidden; }
+  .score-bar-fill { height: 100%; border-radius: 2px; background: linear-gradient(90deg, var(--accent2), var(--accent)); }
+
+  .card-features { font-size: 0.8rem; color: var(--muted); line-height: 1.4; margin-bottom: 0.6rem; }
+  .card-reason { font-size: 0.8rem; color: #95d5b2; font-style: italic; margin-bottom: 0.6rem; }
+
+  .card-footer { display: flex; justify-content: space-between; align-items: center; }
+  .store-badge { font-size: 0.7rem; padding: 2px 8px; border-radius: 3px; background: #2a2a3e; color: var(--muted); }
+  .card-link { font-size: 0.8rem; color: var(--accent); text-decoration: none; }
+  .card-link:hover { text-decoration: underline; }
+
+  .recommendation { max-width: 1200px; margin: 1.5rem auto; padding: 1.25rem; background: linear-gradient(135deg, #1b4332 0%, #1a1a2e 100%); border: 1px solid #2d6a4f; border-radius: 10px; margin-left: auto; margin-right: auto; }
+  .recommendation h3 { color: #95d5b2; margin-bottom: 0.5rem; }
+  .recommendation p { font-size: 0.9rem; line-height: 1.5; }
+  .rec-pick { color: var(--accent); font-weight: 600; }
+
+  .empty { text-align: center; padding: 3rem; color: var(--muted); }
+
+  @media (max-width: 600px) {
+    .grid { grid-template-columns: 1fr; }
+    .filters { flex-direction: column; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Ergonomic <span>Keyboard</span> Finder</h1>
+  <p>37 keyboards scored &amp; ranked for ergonomics, reviews, value, and build quality &mdash; shipping to Brooklyn 11201</p>
+</header>
+
+<div class="filters" id="filters">
+  <div class="filter-group">
+    <label>Budget</label>
+    <div style="display:flex;align-items:center;gap:0.5rem;">
+      <input type="range" id="budget" min="30" max="550" value="550" step="10">
+      <span class="budget-val" id="budgetVal">$550</span>
+    </div>
+  </div>
+  <div class="filter-group">
+    <label>Layout</label>
+    <select id="layout">
+      <option value="">All Layouts</option>
+      <option value="split">Split</option>
+      <option value="alice">Alice</option>
+      <option value="ortho">Ortholinear</option>
+      <option value="wave">Wave / Ergo</option>
+      <option value="low-profile">Low-Profile</option>
+    </select>
+  </div>
+  <div class="filter-group">
+    <label>Connectivity</label>
+    <select id="connectivity">
+      <option value="">Any</option>
+      <option value="wireless">Wireless (BT / 2.4GHz)</option>
+      <option value="wired">Wired Only</option>
+    </select>
+  </div>
+  <div class="filter-group">
+    <label>Hot-Swap</label>
+    <select id="hotswap">
+      <option value="">Any</option>
+      <option value="true">Yes</option>
+      <option value="false">No</option>
+    </select>
+  </div>
+  <div class="filter-group">
+    <label>Mechanical Only</label>
+    <select id="mechonly">
+      <option value="">All</option>
+      <option value="true">Mechanical Only</option>
+    </select>
+  </div>
+  <div class="filter-group">
+    <label>Store</label>
+    <select id="store">
+      <option value="">All Stores</option>
+    </select>
+  </div>
+</div>
+
+<div class="results-bar">
+  <span id="resultCount">37 keyboards</span>
+  <div style="display:flex;gap:0.5rem;">
+    <button class="sort-btn active" data-sort="score">Score</button>
+    <button class="sort-btn" data-sort="price-asc">Price &uarr;</button>
+    <button class="sort-btn" data-sort="price-desc">Price &darr;</button>
+    <button class="sort-btn" data-sort="rating">Rating</button>
+  </div>
+</div>
+
+<div id="recommendation" class="recommendation" style="display:none;margin-left:1rem;margin-right:1rem;"></div>
+<div class="grid" id="grid"></div>
+<div class="empty" id="empty" style="display:none;">No keyboards match your filters. Try adjusting your criteria.</div>
+
+<script>
+const KEYBOARDS = [
+  {title:"Kinesis Advantage360 Professional",brand:"Kinesis",price:449,rating:4.4,rating_count:312,availability:"In Stock",store:"Amazon",category:"Premium Split",layout:"Split Contoured",size:"Full",switch_type:"Cherry MX Brown",connectivity:"Bluetooth + USB-C",hot_swappable:true,programmable:"ZMK (Open Source)",ergonomic_features:"Split, Tented, Contoured keywells, Thumb clusters",product_url:"https://www.amazon.com/dp/B0BCHMGZMD",score:62.0,ergo_score:75},
+  {title:"Kinesis Advantage360 Professional",brand:"Kinesis",price:529,rating:4.4,rating_count:89,availability:"In Stock",store:"Walmart",category:"Premium Split",layout:"Split Contoured",size:"Full",switch_type:"Cherry MX Brown",connectivity:"Bluetooth + USB-C",hot_swappable:true,programmable:"ZMK (Open Source)",ergonomic_features:"Split, Tented, Contoured keywells, Thumb clusters",product_url:"https://www.walmart.com/ip/5607615601",score:59.5,ergo_score:75},
+  {title:"Kinesis Advantage360 (Wired)",brand:"Kinesis",price:399,rating:4.3,rating_count:198,availability:"In Stock",store:"Amazon",category:"Premium Split",layout:"Split Contoured",size:"Full",switch_type:"Cherry MX Brown",connectivity:"USB-C",hot_swappable:true,programmable:"ZMK (Open Source)",ergonomic_features:"Split, Tented, Contoured keywells, Thumb clusters",product_url:"https://www.amazon.com/dp/B0BCHFHX6V",score:60.5,ergo_score:75},
+  {title:"ZSA Voyager",brand:"ZSA",price:365,rating:4.7,rating_count:520,availability:"In Stock",store:"ZSA Direct",category:"Premium Split",layout:"Split Columnar",size:"Compact (52 keys)",switch_type:"Kailh Choc V2",connectivity:"USB-C",hot_swappable:true,programmable:"QMK/ZMK + Oryx",ergonomic_features:"Split, Low-profile, Portable, Magnetic tenting",product_url:"https://www.zsa.io/voyager",score:53.6,ergo_score:50},
+  {title:"ZSA Moonlander Mark I",brand:"ZSA",price:389,rating:4.6,rating_count:890,availability:"In Stock",store:"ZSA Direct",category:"Premium Split",layout:"Split Ortholinear",size:"Full (72 keys)",switch_type:"Cherry MX Brown / Various",connectivity:"USB-C",hot_swappable:true,programmable:"QMK + Oryx",ergonomic_features:"Split, Adjustable tenting, Thumb clusters, Wrist rest",product_url:"https://www.zsa.io/moonlander",score:58.1,ergo_score:70},
+  {title:"Dygma Defy",brand:"Dygma",price:370,rating:4.5,rating_count:445,availability:"In Stock",store:"Dygma Direct",category:"Premium Split",layout:"Split Columnar",size:"Compact (64 keys)",switch_type:"Kailh Speed Copper / Various",connectivity:"Bluetooth + USB-C + RF",hot_swappable:true,programmable:"Bazecor (QMK-like)",ergonomic_features:"Split, Wireless between halves, Tenting, Thumb clusters",product_url:"https://dygma.com/pages/defy",score:59.7,ergo_score:60},
+  {title:"Dygma Raise 2",brand:"Dygma",price:359,rating:4.4,rating_count:310,availability:"In Stock",store:"Dygma Direct",category:"Premium Split",layout:"Split Staggered",size:"TKL (66 keys)",switch_type:"Various",connectivity:"Bluetooth + USB-C + RF",hot_swappable:true,programmable:"Bazecor",ergonomic_features:"Split, Wireless between halves, Thumb keys, Tenting kit available",product_url:"https://dygma.com/pages/raise",score:50.6,ergo_score:60},
+  {title:"Glove80",brand:"MoErgo",price:399,rating:4.6,rating_count:280,availability:"In Stock",store:"MoErgo Direct",category:"Premium Split",layout:"Split Contoured Columnar",size:"80 keys",switch_type:"Kailh Choc V1",connectivity:"Bluetooth + USB-C",hot_swappable:true,programmable:"ZMK",ergonomic_features:"Split, Contoured keywells, 6-position tenting, Thumb clusters, Low-profile",product_url:"https://www.moergo.com/collections/glove80",score:64.5,ergo_score:75},
+  {title:"Keychron Q10 Pro",brand:"Keychron",price:215,rating:4.5,rating_count:620,availability:"In Stock",store:"Keychron Direct",category:"Alice",layout:"Alice",size:"75% (89 keys)",switch_type:"Gateron Jupiter Brown",connectivity:"Bluetooth + USB-C",hot_swappable:true,programmable:"QMK/VIA",ergonomic_features:"Alice curved split, Knob, Wrist rest compatible",product_url:"https://www.keychron.com/products/keychron-q10-pro",score:58.2,ergo_score:40},
+  {title:"Keychron Q10 Pro",brand:"Keychron",price:219,rating:4.5,rating_count:340,availability:"In Stock",store:"Amazon",category:"Alice",layout:"Alice",size:"75% (89 keys)",switch_type:"Gateron Jupiter Brown",connectivity:"Bluetooth + USB-C",hot_swappable:true,programmable:"QMK/VIA",ergonomic_features:"Alice curved split, Knob",product_url:"https://www.amazon.com/Keychron-Q10-Pro",score:53.5,ergo_score:30},
+  {title:"Keychron Q11 QMK Split",brand:"Keychron",price:205,rating:4.4,rating_count:510,availability:"In Stock",store:"Keychron Direct",category:"Split",layout:"Split 75%",size:"75% Split (91 keys)",switch_type:"Gateron G Pro Brown",connectivity:"USB-C (Wired)",hot_swappable:true,programmable:"QMK/VIA",ergonomic_features:"Physical split, Knob, Full aluminum",product_url:"https://www.keychron.com/products/keychron-q11-qmk-custom-mechanical-keyboard",score:54.1,ergo_score:30},
+  {title:"Keychron Q11 QMK Split",brand:"Keychron",price:209,rating:4.4,rating_count:280,availability:"In Stock",store:"Amazon",category:"Split",layout:"Split 75%",size:"75% Split (91 keys)",switch_type:"Gateron G Pro Brown",connectivity:"USB-C (Wired)",hot_swappable:true,programmable:"QMK/VIA",ergonomic_features:"Physical split, Knob, Full aluminum",product_url:"https://www.amazon.com/dp/B0C9Q7S8CB",score:53.5,ergo_score:30},
+  {title:"Feker Alice98",brand:"Feker/MechLands",price:109,rating:4.3,rating_count:380,availability:"In Stock",store:"Amazon",category:"Alice",layout:"Alice",size:"98% with Numpad",switch_type:"Various (Hot-swap)",connectivity:"USB-C (Wired)",hot_swappable:true,programmable:"VIA",ergonomic_features:"Alice split with numpad, Knob, 5-layer padding",product_url:"https://www.amazon.com/dp/B0DF2CZZ8Z",score:51.4,ergo_score:30},
+  {title:"Feker Alice98 QMK/VIA Wireless",brand:"Feker/MechLands",price:139,rating:4.3,rating_count:210,availability:"In Stock",store:"Feker Direct",category:"Alice",layout:"Alice",size:"98% with Numpad",switch_type:"Various (Hot-swap)",connectivity:"Bluetooth + 2.4GHz + USB-C",hot_swappable:true,programmable:"QMK/VIA",ergonomic_features:"Alice split with numpad, Knob, 8000mAh battery",product_url:"https://fekertech.com/products/feker-alice98-qmk-via",score:52.9,ergo_score:30},
+  {title:"QK Alice Duo",brand:"QwertyKeys",price:299,rating:4.5,rating_count:95,availability:"In Stock",store:"QwertyKeys Direct",category:"Alice",layout:"Split Alice",size:"65%",switch_type:"Various (Hot-swap)",connectivity:"USB-C",hot_swappable:true,programmable:"QMK/VIA",ergonomic_features:"Split Alice, Adjustable tenting (0-5\u00b0), Dual hinges",product_url:"https://qwertykeys.com/products/qk-alice-duo",score:51.8,ergo_score:50},
+  {title:"GMK70 Alice",brand:"GMK",price:79,rating:4.1,rating_count:450,availability:"In Stock",store:"Amazon",category:"Alice",layout:"Alice",size:"70%",switch_type:"Various (Hot-swap)",connectivity:"Bluetooth + 2.4GHz + USB-C",hot_swappable:true,programmable:"Software",ergonomic_features:"Alice layout, Budget-friendly entry",product_url:"https://www.amazon.com/GMK70-Alice",score:37.2,ergo_score:0},
+  {title:"Kinesis mWave Ergonomic Keyboard (PC)",brand:"Kinesis",price:199,rating:4.3,rating_count:145,availability:"In Stock",store:"Kinesis Direct",category:"Wave/Ergo",layout:"Alice Wave",size:"Full",switch_type:"Gateron Low-Profile Brown",connectivity:"Bluetooth + USB-C",hot_swappable:false,programmable:"Kinesis SmartSet",ergonomic_features:"Tented center, Negative tilt, Padded wrist rest, Wave layout",product_url:"https://kinesis-ergo.com/shop/mwave-pc/",score:46.4,ergo_score:40},
+  {title:"Kinesis mWave Ergonomic Keyboard (Mac)",brand:"Kinesis",price:199,rating:4.3,rating_count:98,availability:"In Stock",store:"Amazon",category:"Wave/Ergo",layout:"Alice Wave",size:"Full",switch_type:"Gateron Low-Profile Brown",connectivity:"Bluetooth + USB-C",hot_swappable:false,programmable:"Kinesis SmartSet",ergonomic_features:"Tented center, Negative tilt, Padded wrist rest, Wave layout",product_url:"https://www.amazon.com/dp/B0DYLB3YBJ",score:46.3,ergo_score:40},
+  {title:"Kinesis Freestyle Pro",brand:"Kinesis",price:179,rating:4.2,rating_count:520,availability:"In Stock",store:"Kinesis Direct",category:"Split",layout:"Split Flat",size:"TKL",switch_type:"Cherry MX Silent Red",connectivity:"USB",hot_swappable:false,programmable:"SmartSet",ergonomic_features:"Split (20in cable), Splay adjustable, VIP3 tenting kit available",product_url:"https://kinesis-ergo.com/shop/freestyle-pro/",score:48.6,ergo_score:50},
+  {title:"Keychron K15 Max Alice Low-Profile",brand:"Keychron",price:119,rating:4.4,rating_count:290,availability:"In Stock",store:"Keychron Direct",category:"Low-Profile",layout:"Alice",size:"75%",switch_type:"Gateron Low-Profile Brown",connectivity:"Bluetooth + 2.4GHz + USB-C",hot_swappable:true,programmable:"QMK/VIA",ergonomic_features:"Alice layout, Low-profile, Ultra-slim, LSA keycaps",product_url:"https://www.keychron.com/products/keychron-k15-pro-alice-layout",score:45.1,ergo_score:0},
+  {title:"Keychron K11 Pro Alice Low-Profile",brand:"Keychron",price:99,rating:4.3,rating_count:380,availability:"In Stock",store:"Keychron Direct",category:"Low-Profile",layout:"Alice",size:"65%",switch_type:"Gateron Low-Profile Brown",connectivity:"Bluetooth + USB-C",hot_swappable:true,programmable:"QMK/VIA",ergonomic_features:"Alice layout, Low-profile, Ultra-slim, Portable",product_url:"https://www.keychron.com/products/keychron-k11-pro",score:45.8,ergo_score:0},
+  {title:"NuPhy Air75 V2",brand:"NuPhy",price:129,rating:4.5,rating_count:1200,availability:"In Stock",store:"Amazon",category:"Low-Profile",layout:"Standard 75%",size:"75%",switch_type:"NuPhy Low-Profile",connectivity:"Bluetooth + 2.4GHz + USB-C",hot_swappable:true,programmable:"Software",ergonomic_features:"Low-profile, Lightweight, Portable",product_url:"https://www.amazon.com/NuPhy-Air75-V2",score:37.8,ergo_score:0},
+  {title:"Keebio Nyquist Split Ortho",brand:"Keebio",price:89,rating:4.3,rating_count:175,availability:"In Stock",store:"Keebio Direct",category:"Ortholinear",layout:"Split Ortholinear",size:"60% (60 keys)",switch_type:"Various (Hot-swap)",connectivity:"USB-C",hot_swappable:true,programmable:"QMK/VIA",ergonomic_features:"Split, Ortholinear grid, OLED support",product_url:"https://keeb.io/collections/split-keyboards",score:53.8,ergo_score:35},
+  {title:"Keebio Sinc Split 75%",brand:"Keebio",price:99,rating:4.3,rating_count:210,availability:"In Stock",store:"Keebio Direct",category:"Split",layout:"Split Staggered",size:"75%",switch_type:"Various (Hot-swap)",connectivity:"USB-C",hot_swappable:true,programmable:"QMK/VIA",ergonomic_features:"Split, Staggered, Affordable entry",product_url:"https://keeb.io/products/sinc-rev-4",score:51.5,ergo_score:30},
+  {title:"OLKB Planck V7",brand:"OLKB/Drop",price:110,rating:4.4,rating_count:340,availability:"In Stock",store:"Drop",category:"Ortholinear",layout:"Ortholinear",size:"40% (47 keys)",switch_type:"Various (Hot-swap)",connectivity:"USB-C",hot_swappable:true,programmable:"QMK/VIA",ergonomic_features:"Ortholinear grid, Ultra-compact, Layer-based",product_url:"https://drop.com/buy/planck-mechanical-keyboard",score:41.6,ergo_score:5},
+  {title:"Logitech Ergo K860",brand:"Logitech",price:129,rating:4.4,rating_count:12500,availability:"In Stock",store:"Amazon",category:"Wave/Ergo",layout:"Wave Split",size:"Full",switch_type:"Membrane (not mechanical)",connectivity:"Bluetooth + USB Receiver",hot_swappable:false,programmable:"Logi Options+",ergonomic_features:"Split wave, Tented, Padded wrist rest, Negative tilt",product_url:"https://www.amazon.com/Logitech-Wireless-Ergonomic-Keyboard-Wrist/dp/B07ZWK2TQT",score:61.2,ergo_score:70},
+  {title:"Logitech Ergo K860",brand:"Logitech",price:129,rating:4.4,rating_count:890,availability:"In Stock",store:"Best Buy",category:"Wave/Ergo",layout:"Wave Split",size:"Full",switch_type:"Membrane (not mechanical)",connectivity:"Bluetooth + USB Receiver",hot_swappable:false,programmable:"Logi Options+",ergonomic_features:"Split wave, Tented, Padded wrist rest, Negative tilt",product_url:"https://www.bestbuy.com/site/logitech-ergo-k860/6395346.p",score:56.9,ergo_score:70},
+  {title:"Microsoft Sculpt Ergonomic Keyboard",brand:"Microsoft",price:44,rating:4.3,rating_count:18000,availability:"In Stock",store:"Amazon",category:"Budget Ergo",layout:"Split Dome",size:"Full + Separate Numpad",switch_type:"Membrane",connectivity:"USB Receiver",hot_swappable:false,programmable:"No",ergonomic_features:"Split dome, Tented, Padded wrist rest, Separate numpad",product_url:"https://www.amazon.com/Microsoft-Ergonomic-Keyboard-Business-5KV-00001/dp/B00CYX26BC",score:60.3,ergo_score:60},
+  {title:"Keychron Q10 Max Alice Wireless",brand:"Keychron",price:229,rating:4.5,rating_count:180,availability:"In Stock",store:"Keychron Direct",category:"Alice",layout:"Alice",size:"75%",switch_type:"Gateron Jupiter Brown",connectivity:"Bluetooth + 2.4GHz + USB-C",hot_swappable:true,programmable:"QMK/VIA",ergonomic_features:"Alice layout, Wireless, Aluminum, Knob",product_url:"https://www.keychron.com/products/keychron-q10-max",score:43.8,ergo_score:0},
+  {title:"Cloud Nine ErgoTKL Split Keyboard",brand:"Cloud Nine",price:169,rating:4.2,rating_count:230,availability:"In Stock",store:"Amazon",category:"Split",layout:"Split Staggered",size:"TKL",switch_type:"Cherry MX Brown",connectivity:"USB",hot_swappable:false,programmable:"Software",ergonomic_features:"Split, Padded wrist rest, Adjustable splay",product_url:"https://www.amazon.com/Cloud-Nine-ErgoTKL",score:44.5,ergo_score:40},
+  {title:"EPOMAKER Alice66",brand:"EPOMAKER",price:89,rating:4.2,rating_count:320,availability:"In Stock",store:"Amazon",category:"Alice",layout:"Alice",size:"65%",switch_type:"Various (Hot-swap)",connectivity:"Bluetooth + 2.4GHz + USB-C",hot_swappable:true,programmable:"Software",ergonomic_features:"Alice layout, Wireless, Budget",product_url:"https://www.amazon.com/EPOMAKER-Alice66",score:36.8,ergo_score:0},
+  {title:"Perixx PERIBOARD-535 Ergonomic",brand:"Perixx",price:69,rating:4.1,rating_count:580,availability:"In Stock",store:"Amazon",category:"Budget Ergo",layout:"Split Wave",size:"Full",switch_type:"Kailh Brown",connectivity:"USB",hot_swappable:false,programmable:"No",ergonomic_features:"Split wave, Tented, Low-profile keycaps, Wrist rest",product_url:"https://www.amazon.com/Perixx-PERIBOARD-535",score:56.9,ergo_score:60},
+  {title:"X-Bows Nature Ergonomic",brand:"X-Bows",price:139,rating:4.0,rating_count:190,availability:"In Stock",store:"Amazon",category:"Ergonomic",layout:"Cross-linear Ergonomic",size:"TKL",switch_type:"Gateron Brown",connectivity:"USB-C",hot_swappable:true,programmable:"Software",ergonomic_features:"Cross-linear layout, Reduced finger travel, Thumb cluster",product_url:"https://www.amazon.com/X-Bows-Nature",score:38.0,ergo_score:10},
+  {title:"Kinesis Freestyle2 for PC",brand:"Kinesis",price:89,rating:4.1,rating_count:1100,availability:"In Stock",store:"Amazon",category:"Split",layout:"Split Flat",size:"Full",switch_type:"Membrane",connectivity:"USB",hot_swappable:false,programmable:"SmartSet",ergonomic_features:"Split (20in), VIP3 tenting kit, Splay adjustable",product_url:"https://www.amazon.com/Kinesis-Freestyle2-Ergonomic-Keyboard-Separation/dp/B0089ZLENA",score:50.1,ergo_score:50},
+  {title:"IQUNIX Magi96 Low-Profile",brand:"IQUNIX",price:199,rating:4.3,rating_count:150,availability:"In Stock",store:"Amazon",category:"Low-Profile",layout:"Standard 96%",size:"96%",switch_type:"Low-Profile",connectivity:"Bluetooth + USB-C",hot_swappable:true,programmable:"Software",ergonomic_features:"Ultra-slim 11mm, Aircraft aluminum, Low-profile",product_url:"https://www.amazon.com/IQUNIX-Magi96",score:35.4,ergo_score:0},
+  {title:"ErgoDox EZ Glow",brand:"ZSA",price:354,rating:4.5,rating_count:650,availability:"In Stock",store:"ZSA Direct",category:"Premium Split",layout:"Split Ortholinear",size:"76 keys",switch_type:"Cherry MX Brown / Various",connectivity:"USB-C",hot_swappable:true,programmable:"QMK + Oryx",ergonomic_features:"Split, Ortholinear, Thumb clusters, Tilt/tent kit",product_url:"https://ergodox-ez.com/",score:60.7,ergo_score:75},
+  {title:"NocFree Split Wireless",brand:"NocFree",price:249,rating:0,rating_count:0,availability:"Pre-order (Mar/Apr 2026)",store:"NocFree Direct",category:"Premium Split",layout:"Split",size:"65%",switch_type:"Low-Profile Linear",connectivity:"Bluetooth (wireless between halves)",hot_swappable:true,programmable:"Firmware",ergonomic_features:"Split, Wireless halves, Optional tenting kit, Low-profile",product_url:"https://nocfree.com",score:38.0,ergo_score:50}
+];
+
+const TOP10_REASONS = {
+  "ZSA Voyager": "Best portable split \u2014 ultra-thin, magnetic tenting, QMK + Oryx configurator. Perfect for developers who travel.",
+  "ZSA Moonlander Mark I": "The benchmark split ortho keyboard \u2014 adjustable tenting, thumb clusters, legendary Oryx software. Huge community.",
+  "Dygma Defy": "Only premium split with true wireless between halves + Bluetooth. Tenting, thumb clusters, and Bazecor software make it incredibly versatile.",
+  "Glove80": "Best contoured keywell design \u2014 6-position tenting, low-profile Choc switches, 80 keys. The most ergonomic shape available.",
+  "Kinesis Advantage360 Professional": "The OG contoured split \u2014 decades of ergonomic research, Cherry MX switches, Bluetooth. Gold standard for RSI prevention.",
+  "Keychron Q10 Pro": "Best value Alice layout \u2014 aluminum build, QMK/VIA, wireless, hot-swap, under $220. No learning curve.",
+  "Keychron Q11 QMK Split": "Best budget physical split \u2014 full aluminum, QMK/VIA, hot-swap, knob. True split without premium pricing.",
+  "Feker Alice98 QMK/VIA Wireless": "Only Alice keyboard with a numpad AND wireless for under $140. Incredible value for accountants and data workers.",
+  "Keychron K15 Max Alice Low-Profile": "Best low-profile ergo \u2014 Alice layout, tri-mode wireless, QMK/VIA, hot-swap, all at $119. Slim and comfortable.",
+  "Kinesis mWave Ergonomic Keyboard (PC)": "Best for ergo beginners \u2014 zero learning curve Wave layout, built-in tenting + wrist rest + negative tilt. Just start typing.",
+  "ErgoDox EZ Glow": "The original split ortho powerhouse \u2014 fully programmable with Oryx, thumb clusters, tilt/tent kit. Massive community support.",
+  "Logitech Ergo K860": "Most popular ergo keyboard on the market \u2014 zero learning curve, amazing wrist rest, split wave + tented. Not mechanical but supremely comfortable.",
+  "Microsoft Sculpt Ergonomic Keyboard": "Best budget ergo \u2014 proven split dome design at just $44. Separate numpad, tented, with padded wrist rest.",
+  "Perixx PERIBOARD-535 Ergonomic": "Best budget mechanical ergo \u2014 Kailh Brown switches, split wave layout, tented, with wrist rest at just $69."
+};
+
+const REVIEWS = {
+  "ZSA Voyager": [
+    {source:"RTINGS.com",pros:"Extremely portable, excellent build, magnetic tenting",cons:"Only 52 keys \u2014 steep learning curve",verdict:"Best portable split ergo keyboard",best_for:"Traveling developers and minimalists",ergo_notes:"Low-profile Choc switches reduce wrist extension"},
+    {source:"The Verge",pros:"Beautiful design, Oryx configurator is best-in-class",cons:"No wireless, limited keys",verdict:"A premium tool for serious typists",best_for:"Programmers who value customization",ergo_notes:"Magnetic tenting legs let you find your perfect angle"}
+  ],
+  "ZSA Moonlander Mark I": [
+    {source:"PC Gamer",pros:"Incredible customization, split ortho layout, thumb clusters",cons:"Expensive, learning curve for ortho layout",verdict:"The ultimate programmable ergo keyboard",best_for:"Power users and developers",ergo_notes:"Adjustable tenting reduces forearm pronation significantly"},
+    {source:"Tom's Hardware",pros:"Build quality, hot-swap, Oryx web configurator",cons:"Wired only, takes 2-4 weeks to learn ortho",verdict:"Worth the investment for daily heavy typists",best_for:"Anyone typing 6+ hours daily",ergo_notes:"Thumb clusters eliminate pinky strain from modifier keys"}
+  ],
+  "Dygma Defy": [
+    {source:"RTINGS.com",pros:"Wireless between halves, excellent tenting, great software",cons:"Premium price, columnar layout learning curve",verdict:"Best wireless split ergo keyboard",best_for:"Users who need clean desk setup",ergo_notes:"True wireless split means zero cable constraints on positioning"},
+    {source:"Switch and Click",pros:"Bazecor software, multiple connectivity, thumb clusters",cons:"Not cheaply made but priced accordingly",verdict:"A serious contender for best ergo keyboard",best_for:"Multi-device users",ergo_notes:"Tenting angles help prevent carpal tunnel"}
+  ],
+  "Glove80": [
+    {source:"Ergonomic Gear Reviews",pros:"Most ergonomic shape, 6 tenting positions, light weight",cons:"Limited switch options (Choc only), niche product",verdict:"Peak ergonomic keyboard design",best_for:"Users with RSI or carpal tunnel",ergo_notes:"Contoured keywells match natural finger curl \u2014 reduces strain dramatically"},
+    {source:"KeebFinder",pros:"ZMK firmware, split, low-profile, comfortable from day one",cons:"Expensive, unusual look",verdict:"The most comfortable keyboard money can buy",best_for:"Ergonomic purists",ergo_notes:"6-position tenting lets you dial in exact forearm angle"}
+  ],
+  "Kinesis Advantage360 Professional": [
+    {source:"RTINGS.com",pros:"Decades of ergonomic design, contoured keywells, Cherry MX",cons:"Very expensive, steep learning curve",verdict:"The gold standard for ergo keyboards",best_for:"Users with serious RSI concerns",ergo_notes:"Contoured keywells + tenting + thumb clusters address all major strain points"},
+    {source:"Wirecutter",pros:"Proven ergonomic design, Bluetooth, programmable",cons:"$449+ price tag, bulky",verdict:"Best if you can justify the investment",best_for:"Professional typists with RSI",ergo_notes:"The concave key layout reduces finger extension by 20%+"}
+  ],
+  "Keychron Q10 Pro": [
+    {source:"TechGearLab",pros:"Great value, aluminum build, QMK/VIA, wireless",cons:"Not a true split \u2014 only curved",verdict:"Best mainstream ergonomic mechanical keyboard",best_for:"Anyone wanting ergo without the learning curve",ergo_notes:"Alice curve reduces ulnar deviation without requiring adaptation"},
+    {source:"Switch and Click",pros:"Hot-swap, knob, solid typing feel, Bluetooth",cons:"Heavy, not portable",verdict:"Excellent daily driver for ergonomic typing",best_for:"Office workers and programmers",ergo_notes:"7\u00b0 typing angle with wrist rest promotes neutral position"}
+  ],
+  "Keychron Q11 QMK Split": [
+    {source:"Engadget",pros:"True physical split, full aluminum, QMK/VIA, affordable",cons:"Wired only, no tenting built-in",verdict:"Best entry point to split keyboards",best_for:"Users curious about split layouts",ergo_notes:"Physical split allows shoulder-width hand positioning"},
+    {source:"KeebFinder",pros:"Premium build at mid-range price, hot-swap, knob",cons:"Heavy halves, cable between halves",verdict:"The split keyboard for the masses",best_for:"Budget-conscious ergonomic seekers",ergo_notes:"Adjustable split distance helps find natural arm angle"}
+  ],
+  "Feker Alice98 QMK/VIA Wireless": [
+    {source:"AllThingsErgo",pros:"Alice + numpad + wireless + QMK under $140",cons:"Plastic build, not premium feel",verdict:"Incredible value for feature set",best_for:"Data entry workers wanting ergonomics",ergo_notes:"Alice curve plus numpad is unique in this price range"}
+  ],
+  "Keychron K15 Max Alice Low-Profile": [
+    {source:"XDA Developers",pros:"Low-profile Alice, tri-mode wireless, QMK/VIA, slim",cons:"Low-profile feel isn't for everyone",verdict:"Best low-profile ergo keyboard",best_for:"Users who prefer laptop-like key feel",ergo_notes:"Low profile means less wrist extension \u2014 good for long sessions"}
+  ],
+  "Kinesis mWave Ergonomic Keyboard (PC)": [
+    {source:"Engadget",pros:"Zero learning curve, built-in tenting + wrist rest, Bluetooth",cons:"Not hot-swappable, Gateron low-profile only",verdict:"Best ergo keyboard for beginners",best_for:"First-time ergo keyboard users",ergo_notes:"Wave layout + negative tilt + padded rest = immediate comfort improvement"}
+  ]
+};
+
+let keyboards = KEYBOARDS;
+let sortMode = 'score';
+
+function populateStores() {
+  const stores = [...new Set(keyboards.map(k => k.store))].sort();
+  const sel = document.getElementById('store');
+  stores.forEach(s => {
+    const opt = document.createElement('option');
+    opt.value = s; opt.textContent = s;
+    sel.appendChild(opt);
+  });
+}
+
+function matchLayout(kb, filter) {
+  if (!filter) return true;
+  const l = (kb.layout + ' ' + kb.category).toLowerCase();
+  if (filter === 'split') return l.includes('split');
+  if (filter === 'alice') return l.includes('alice');
+  if (filter === 'ortho') return l.includes('ortho');
+  if (filter === 'wave') return l.includes('wave') || l.includes('ergo');
+  if (filter === 'low-profile') return l.includes('low-profile') || l.includes('low profile');
+  return true;
+}
+
+function filterAndSort() {
+  const budget = parseInt(document.getElementById('budget').value);
+  const layout = document.getElementById('layout').value;
+  const conn = document.getElementById('connectivity').value;
+  const hotswap = document.getElementById('hotswap').value;
+  const mechonly = document.getElementById('mechonly').value;
+  const store = document.getElementById('store').value;
+
+  document.getElementById('budgetVal').textContent = '$' + budget;
+
+  let filtered = keyboards.filter(k => {
+    if (k.price > budget) return false;
+    if (!matchLayout(k, layout)) return false;
+    if (conn === 'wireless' && !k.connectivity.toLowerCase().match(/bluetooth|2\.4/)) return false;
+    if (conn === 'wired' && k.connectivity.toLowerCase().match(/bluetooth|2\.4/)) return false;
+    if (hotswap === 'true' && !k.hot_swappable) return false;
+    if (hotswap === 'false' && k.hot_swappable) return false;
+    if (mechonly === 'true' && k.switch_type.toLowerCase().includes('membrane')) return false;
+    if (store && k.store !== store) return false;
+    return true;
+  });
+
+  if (sortMode === 'score') filtered.sort((a, b) => b.score - a.score);
+  else if (sortMode === 'price-asc') filtered.sort((a, b) => a.price - b.price);
+  else if (sortMode === 'price-desc') filtered.sort((a, b) => b.price - a.price);
+  else if (sortMode === 'rating') filtered.sort((a, b) => b.rating - a.rating || b.rating_count - a.rating_count);
+
+  document.getElementById('resultCount').textContent = filtered.length + ' keyboard' + (filtered.length !== 1 ? 's' : '');
+
+  renderRecommendation(filtered);
+  renderGrid(filtered);
+}
+
+function renderRecommendation(filtered) {
+  const recEl = document.getElementById('recommendation');
+  if (filtered.length === 0) { recEl.style.display = 'none'; return; }
+
+  const top = filtered[0];
+  let reason = TOP10_REASONS[top.title] || '';
+  let reviewSnippet = '';
+  if (REVIEWS[top.title] && REVIEWS[top.title].length > 0) {
+    const r = REVIEWS[top.title][0];
+    reviewSnippet = r.source + ' says: "' + r.verdict + '". Best for: ' + r.best_for + '.';
+  }
+
+  recEl.style.display = 'block';
+  recEl.innerHTML =
+    '<h3>Top Pick for You</h3>' +
+    '<p><span class="rec-pick">' + top.title + '</span> by ' + top.brand + ' &mdash; $' + top.price + '</p>' +
+    (reason ? '<p style="margin-top:0.3rem;">' + reason + '</p>' : '') +
+    (reviewSnippet ? '<p style="margin-top:0.3rem;color:var(--muted);font-size:0.85rem;">' + reviewSnippet + '</p>' : '');
+}
+
+function renderGrid(filtered) {
+  const grid = document.getElementById('grid');
+  const empty = document.getElementById('empty');
+
+  if (filtered.length === 0) {
+    grid.innerHTML = '';
+    empty.style.display = 'block';
+    return;
+  }
+  empty.style.display = 'none';
+
+  const byScore = [...filtered].sort((a, b) => b.score - a.score);
+  const top3keys = byScore.slice(0, 3).map(k => k.title + '|' + k.store);
+
+  grid.innerHTML = filtered.map(k => {
+    const key = k.title + '|' + k.store;
+    const rank = top3keys.indexOf(key);
+    const isTop3 = rank >= 0;
+    const scorePercent = Math.min(100, (k.score / 70) * 100);
+    const isMembrane = k.switch_type.toLowerCase().includes('membrane');
+    const isWireless = /bluetooth|2\.4/i.test(k.connectivity);
+    const reason = TOP10_REASONS[k.title] || '';
+
+    return '<div class="card' + (isTop3 ? ' top3' : '') + '"' + (isTop3 ? ' data-rank="#' + (rank+1) + '"' : '') + '>' +
+      '<div class="card-header">' +
+        '<div class="card-title">' + k.title + '</div>' +
+        '<div class="card-price">$' + k.price + '</div>' +
+      '</div>' +
+      '<div class="card-brand">' + k.brand + ' &middot; ' + k.category + '</div>' +
+      '<div class="card-tags">' +
+        '<span class="tag">' + k.layout + '</span>' +
+        '<span class="tag">' + k.size + '</span>' +
+        (!isMembrane ? '<span class="tag mech">Mechanical</span>' : '<span class="tag">Membrane</span>') +
+        (isWireless ? '<span class="tag wireless">Wireless</span>' : '') +
+        (k.hot_swappable ? '<span class="tag ergo">Hot-Swap</span>' : '') +
+      '</div>' +
+      '<div class="score-bar"><div class="score-bar-fill" style="width:' + scorePercent + '%"></div></div>' +
+      '<div class="card-stats">' +
+        '<div class="stat"><span class="stat-label">Score</span><span class="stat-value">' + k.score + '</span></div>' +
+        '<div class="stat"><span class="stat-label">Rating</span><span class="stat-value">' + k.rating + '/5 (' + k.rating_count.toLocaleString() + ')</span></div>' +
+        '<div class="stat"><span class="stat-label">Ergo</span><span class="stat-value">' + k.ergo_score + '/100</span></div>' +
+        '<div class="stat"><span class="stat-label">Switch</span><span class="stat-value">' + k.switch_type + '</span></div>' +
+      '</div>' +
+      '<div class="card-features">' + k.ergonomic_features + '</div>' +
+      (reason ? '<div class="card-reason">"' + reason + '"</div>' : '') +
+      '<div class="card-footer">' +
+        '<span class="store-badge">' + k.store + '</span>' +
+        '<a class="card-link" href="' + k.product_url + '" target="_blank" rel="noopener">View Product &rarr;</a>' +
+      '</div>' +
+    '</div>';
+  }).join('');
+}
+
+// Init
+populateStores();
+filterAndSort();
+
+// Event listeners
+document.getElementById('budget').addEventListener('input', filterAndSort);
+['layout', 'connectivity', 'hotswap', 'mechonly', 'store'].forEach(function(id) {
+  document.getElementById(id).addEventListener('change', filterAndSort);
+});
+
+document.querySelectorAll('.sort-btn').forEach(function(btn) {
+  btn.addEventListener('click', function() {
+    document.querySelectorAll('.sort-btn').forEach(function(b) { b.classList.remove('active'); });
+    btn.classList.add('active');
+    sortMode = btn.dataset.sort;
+    filterAndSort();
+  });
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,95 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Keyboard Product Record",
+  "description": "Unified schema for keyboard product data across all retailers.",
+  "type": "object",
+  "required": ["source_site", "product_title", "brand", "price_usd"],
+  "properties": {
+    "source_site": {
+      "type": "string",
+      "description": "Retailer name (e.g. Amazon, Best Buy, Walmart)"
+    },
+    "product_title": {
+      "type": "string",
+      "description": "Full product name"
+    },
+    "brand": {
+      "type": "string",
+      "description": "Manufacturer brand"
+    },
+    "model": {
+      "type": "string",
+      "description": "Model number or identifier"
+    },
+    "price_usd": {
+      "type": "number",
+      "minimum": 0,
+      "description": "Price in US dollars"
+    },
+    "availability": {
+      "type": "string",
+      "description": "Stock status (e.g. In Stock, Out of Stock)"
+    },
+    "ship_to_zip": {
+      "type": "string",
+      "description": "ZIP code for shipping estimate"
+    },
+    "estimated_delivery": {
+      "type": "string",
+      "description": "Estimated delivery date or timeframe"
+    },
+    "product_url": {
+      "type": "string",
+      "format": "uri",
+      "description": "Direct link to product page"
+    },
+    "image_url": {
+      "type": "string",
+      "format": "uri",
+      "description": "Product image URL"
+    },
+    "layout_size": {
+      "type": "string",
+      "description": "Keyboard layout and size (e.g. Split Contoured, Alice 75%, TKL)"
+    },
+    "switch_type": {
+      "type": "string",
+      "description": "Switch type (e.g. Cherry MX Brown, Gateron Red)"
+    },
+    "switch_brand": {
+      "type": "string",
+      "description": "Switch manufacturer (e.g. Cherry, Gateron, Kailh)"
+    },
+    "hot_swappable": {
+      "type": "boolean",
+      "description": "Whether switches can be swapped without soldering"
+    },
+    "connectivity": {
+      "type": "string",
+      "description": "Connection types (e.g. Bluetooth + USB-C)"
+    },
+    "programmable": {
+      "type": "string",
+      "description": "Firmware/software support (e.g. QMK/VIA, ZMK)"
+    },
+    "ergonomic_features": {
+      "type": "string",
+      "description": "Comma-separated ergonomic features (e.g. Split, Tented, Thumb clusters)"
+    },
+    "rating_avg": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 5,
+      "description": "Average customer rating (0-5)"
+    },
+    "rating_count": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Number of customer reviews"
+    },
+    "category": {
+      "type": "string",
+      "description": "Product category for grouping (e.g. Premium Split, Alice, Budget Ergo)"
+    }
+  }
+}
