@@ -8,7 +8,7 @@ An open-source pipeline that searches multiple retailers, normalizes product dat
 
 **No ads. No sponsored links. No tracking. Just the best products for _you_.**
 
-Currently focused on ergonomic and mechanical keyboards (Amazon, Best Buy, Walmart), but designed to be extended to any product category and any retailer.
+Currently focused on ergonomic and mechanical keyboards. Supports 13+ retailers via Nimble (Amazon, Walmart, Target, B&H, Home Depot, and more), plus direct integrations with Best Buy and Walmart APIs. Designed to be extended to any product category and any retailer.
 
 ## Why this exists
 
@@ -34,7 +34,7 @@ Unified schema                              XLSX / CSV / Google Sheets
                                               Web App (interactive)
 ```
 
-1. **Collects** products from 3 retailers (seed data by default; API-ready)
+1. **Collects** products from 13+ retailers via Nimble, or 3 retailers with seed data
 2. **Normalizes** everything into a unified schema with 20+ fields
 3. **Scores** on 4 dimensions: ergonomics (40%), reviews (20%), value (20%), build (20%)
 4. **Ranks** the top 10 with transparent score breakdowns
@@ -100,17 +100,43 @@ python skills/product-shopping/scripts/search.py "keyboard" --mode seed --prefer
 
 See [`skills/product-shopping/SKILL.md`](skills/product-shopping/SKILL.md) for the full flag reference.
 
-### Optional: API keys for live data
+### Optional: Live data with Nimble (recommended)
 
-The skill works out of the box with curated seed data (`--mode seed`). To enable live retailer APIs, set the following environment variables:
+The skill works out of the box with curated seed data (`--mode seed`). For live data from **13+ retailers with a single API key**, set up Nimble:
+
+```bash
+export NIMBLE_API_KEY="your-nimble-api-key"
+```
+
+Nimble dynamically discovers all available e-commerce SERP templates at runtime, so new retailers are picked up automatically. Currently supported retailers:
+
+| Retailer | Template |
+|----------|----------|
+| Amazon | `amazon_serp` |
+| Walmart | `walmart_serp` |
+| Target | `target_serp` |
+| B&H | `b_and_h_serp` |
+| Home Depot | `homedepot_serp` |
+| Staples | `staples_serp` |
+| Office Depot | `office_depot_serp` |
+| ASOS | `asos_serp` |
+| Foot Locker | `footlocker_serp` |
+| Kroger | `kroger_serp` |
+| Slickdeals | `slickdeals_serp` |
+| Sam's Club | `sams_club_plp` |
+| Walmart Canada | `walmart_ca_serp` |
+
+Then use `--mode online` or `--mode auto` (auto uses APIs when keys are present, falls back to seed).
+
+### Alternative: Individual retailer API keys
+
+You can also use individual retailer APIs instead of or alongside Nimble:
 
 | Variable | Retailer | How to get it |
 |----------|----------|---------------|
 | `BESTBUY_API_KEY` | Best Buy | Free at [developer.bestbuy.com](https://developer.bestbuy.com/) |
 | `AMAZON_ACCESS_KEY`, `AMAZON_SECRET_KEY`, `AMAZON_PARTNER_TAG` | Amazon | [PA-API 5.0](https://webservices.amazon.com/paapi5/documentation/) |
 | `WALMART_API_KEY` | Walmart | [Walmart Affiliate API](https://developer.walmart.com/) |
-
-Then use `--mode online` or `--mode auto` (auto uses APIs when keys are present, falls back to seed).
 
 ---
 
@@ -183,6 +209,7 @@ product-shopping-skill/
       amazon_adapter.py # Amazon (PA-API or seed data)
       bestbuy_adapter.py# Best Buy (Products API or seed data)
       walmart_adapter.py# Walmart (Affiliate API or seed data)
+      nimble_adapter.py # Nimble WSA (13+ retailers via dynamic discovery)
       csv_adapter.py    # BYO CSV data loader
     enrichment/
       reviews.py        # Professional review database

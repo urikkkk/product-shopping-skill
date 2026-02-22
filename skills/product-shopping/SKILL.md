@@ -8,6 +8,7 @@ metadata:
       bins: [uv]
       env: []
     optionalEnv:
+      - NIMBLE_API_KEY
       - BESTBUY_API_KEY
       - AMAZON_ACCESS_KEY
       - AMAZON_SECRET_KEY
@@ -66,7 +67,8 @@ Products are scored 0-100 across 4 weighted dimensions:
 ## Data Sources
 
 - **Seed mode** (no API keys needed): Curated product database across 3 retailers
-- **Online mode**: Amazon PA-API 5.0, Best Buy Products API v1, Walmart Affiliate API
+- **Nimble (recommended)**: Set `NIMBLE_API_KEY` to get live data from 13+ retailers (Amazon, Walmart, Target, B&H, Home Depot, Staples, Office Depot, ASOS, Foot Locker, Kroger, Slickdeals, Sam's Club, Walmart Canada) with a single API key. Templates are discovered dynamically at runtime.
+- **Individual APIs**: Amazon PA-API 5.0, Best Buy Products API v1, Walmart Affiliate API
 
 ## Examples
 

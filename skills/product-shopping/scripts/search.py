@@ -71,14 +71,14 @@ def main(argv: list[str] | None = None) -> int:
 
     # Collect from all adapters
     all_products = []
-    adapter_names = ["amazon", "bestbuy", "walmart"]
+    adapter_names = ["amazon", "bestbuy", "walmart", "nimble"]
     for name in adapter_names:
         try:
             adapter = get_adapter(name, mode=args.mode)
             products = adapter.search(
                 query=args.query,
                 zip_code=args.location,
-                max_results=100,
+                max_results=1000,
             )
             all_products.extend(products)
         except Exception as exc:

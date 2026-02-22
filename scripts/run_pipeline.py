@@ -53,7 +53,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     )
     parser.add_argument("--zip", default="11201", help="Shipping ZIP code (default: 11201)")
     parser.add_argument(
-        "--target", type=int, default=100, help="Target number of products to collect"
+        "--target", type=int, default=1000, help="Target number of products to collect"
     )
     parser.add_argument(
         "--query", default="ergonomic mechanical keyboard", help="Search query"
@@ -91,7 +91,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument(
         "--adapters",
         nargs="+",
-        default=["amazon", "bestbuy", "walmart"],
+        default=["amazon", "bestbuy", "walmart", "nimble"],
         help=f"Adapters to use (available: {', '.join(list_adapters())})",
     )
     parser.add_argument("--csv-file", default=None, help="Path to BYO CSV file (adds csv adapter)")

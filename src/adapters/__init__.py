@@ -13,6 +13,7 @@ from src.schema import Product
 from .amazon_adapter import AmazonAdapter
 from .bestbuy_adapter import BestBuyAdapter
 from .csv_adapter import CSVAdapter
+from .nimble_adapter import NimbleAdapter
 from .walmart_adapter import WalmartAdapter
 
 
@@ -34,6 +35,7 @@ ADAPTER_REGISTRY: dict[str, type] = {
     "amazon": AmazonAdapter,
     "bestbuy": BestBuyAdapter,
     "walmart": WalmartAdapter,
+    "nimble": NimbleAdapter,
     "csv": CSVAdapter,
 }
 

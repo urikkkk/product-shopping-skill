@@ -116,6 +116,27 @@ class BaseAdapter:
                     time.sleep(delay)
         raise last_exc  # type: ignore[misc]
 
+    def _post(self, url: str, json: dict | None = None, **kwargs) -> httpx.Response:
+        """Make a throttled POST request with retry and exponential backoff."""
+        last_exc: Exception | None = None
+        for attempt in range(MAX_RETRIES):
+            try:
+                self._throttle()
+                logger.debug("POST %s (attempt %d/%d)", url, attempt + 1, MAX_RETRIES)
+                resp = self.client.post(url, json=json, **kwargs)
+                resp.raise_for_status()
+                return resp
+            except (httpx.TransportError, httpx.HTTPStatusError) as exc:
+                last_exc = exc
+                if attempt < MAX_RETRIES - 1:
+                    delay = BASE_DELAY * (2 ** attempt) + random.uniform(0, MAX_JITTER)
+                    logger.warning(
+                        "[%s] POST failed (attempt %d/%d): %s — retrying in %.1fs",
+                        self.name, attempt + 1, MAX_RETRIES, exc, delay,
+                    )
+                    time.sleep(delay)
+        raise last_exc  # type: ignore[misc]
+
     def search(
         self,
         query: str,
