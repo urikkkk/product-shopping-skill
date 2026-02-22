@@ -42,11 +42,83 @@ Unified schema                              XLSX / CSV / Google Sheets
 6. **Outputs** a styled XLSX (3 tabs), CSV, and optional Google Sheets
 7. **Serves** an interactive web app for filtering and recommendations
 
-## Quickstart
+## Install as OpenClaw / ClawdBot Skill
+
+This project is packaged as an [OpenClaw](https://docs.openclaw.ai/tools/skills) skill, so AI agents can install and invoke it directly.
+
+### Option 1: Install from ClawHub (recommended)
 
 ```bash
-git clone https://github.com/urikkkk/keyboard-shopping-agent.git
-cd keyboard-shopping-agent
+clawhub install product-shopping
+```
+
+### Option 2: Install from GitHub
+
+```bash
+# Clone into your OpenClaw skills directory
+git clone https://github.com/urikkkk/product-shopping-skill.git ~/clawd/skills/product-shopping
+```
+
+Or, if you're using a custom skills path:
+
+```bash
+git clone https://github.com/urikkkk/product-shopping-skill.git /path/to/your/skills/product-shopping
+```
+
+### Option 3: Ask your agent
+
+Paste this into your OpenClaw / ClawdBot chat:
+
+> Install the product-shopping skill from https://github.com/urikkkk/product-shopping-skill
+
+The agent will handle cloning, dependency installation, and configuration.
+
+### Verify installation
+
+```bash
+# Check the skill is recognized
+openclaw skills list --eligible
+
+# Quick test (uses seed data, no API keys needed)
+python skills/product-shopping/scripts/search.py "ergonomic keyboard" --mode seed --output text
+```
+
+### Skill invocation
+
+Once installed, the skill accepts a search query and returns ranked results to stdout:
+
+```bash
+# Text output (markdown table)
+python skills/product-shopping/scripts/search.py "ergonomic keyboard" --mode seed --output text
+
+# JSON output (structured, for downstream agents)
+python skills/product-shopping/scripts/search.py "mechanical keyboard" --mode seed --budget "$200" --output json
+
+# With preference boosting
+python skills/product-shopping/scripts/search.py "keyboard" --mode seed --preferences "Keychron, split, QMK" --output text
+```
+
+See [`skills/product-shopping/SKILL.md`](skills/product-shopping/SKILL.md) for the full flag reference.
+
+### Optional: API keys for live data
+
+The skill works out of the box with curated seed data (`--mode seed`). To enable live retailer APIs, set the following environment variables:
+
+| Variable | Retailer | How to get it |
+|----------|----------|---------------|
+| `BESTBUY_API_KEY` | Best Buy | Free at [developer.bestbuy.com](https://developer.bestbuy.com/) |
+| `AMAZON_ACCESS_KEY`, `AMAZON_SECRET_KEY`, `AMAZON_PARTNER_TAG` | Amazon | [PA-API 5.0](https://webservices.amazon.com/paapi5/documentation/) |
+| `WALMART_API_KEY` | Walmart | [Walmart Affiliate API](https://developer.walmart.com/) |
+
+Then use `--mode online` or `--mode auto` (auto uses APIs when keys are present, falls back to seed).
+
+---
+
+## Quickstart (standalone CLI)
+
+```bash
+git clone https://github.com/urikkkk/product-shopping-skill.git
+cd product-shopping-skill
 pip install -e .
 python -m scripts.run_pipeline --zip 11201 --out xlsx
 ```
@@ -67,8 +139,17 @@ See the [full quickstart guide](cookbook/01-quickstart.md) for more options.
 # Basic run — outputs XLSX + CSV
 python -m scripts.run_pipeline --zip 11201 --out xlsx
 
+# Text output to stdout (for piping to other tools)
+python -m scripts.run_pipeline --out text --mode seed
+
+# JSON output to stdout
+python -m scripts.run_pipeline --out json --mode seed --budget 200
+
 # Filter to wireless keyboards under $300
 python -m scripts.run_pipeline --zip 11201 --budget 300 --wireless yes
+
+# With preference boosting
+python -m scripts.run_pipeline --mode seed --preferences "Keychron, split"
 
 # Only split layout, minimum 100 reviews
 python -m scripts.run_pipeline --zip 11201 --layout split --min-rating-count 100
@@ -89,13 +170,16 @@ python -m scripts.run_pipeline --zip 11201 -v
 ## Architecture
 
 ```
-keyboard-shopping-agent/
+product-shopping-skill/
   src/
     schema.py           # Unified Product dataclass + normalization
     scoring.py          # 4-dimension scoring engine
     output.py           # XLSX, CSV, Google Sheets writers
+    output_formats.py   # Text (markdown) and JSON stdout formatters
+    filters.py          # Product filtering (budget, wireless, layout)
+    preferences.py      # Preference-based ranking boost
     adapters/
-      base.py           # BaseAdapter with throttling
+      base.py           # BaseAdapter with throttling, retry, mode control
       amazon_adapter.py # Amazon (PA-API or seed data)
       bestbuy_adapter.py# Best Buy (Products API or seed data)
       walmart_adapter.py# Walmart (Affiliate API or seed data)
@@ -104,6 +188,12 @@ keyboard-shopping-agent/
       reviews.py        # Professional review database
   scripts/
     run_pipeline.py     # CLI entry point
+  skills/
+    product-shopping/   # OpenClaw skill packaging
+      SKILL.md          # Skill manifest with YAML frontmatter
+      _meta.json        # Skill metadata
+      scripts/
+        search.py       # Skill entry point (stdout output)
   web/
     keyboard_finder.html# Interactive web app (self-contained)
   data/
@@ -111,7 +201,7 @@ keyboard-shopping-agent/
     schema.json         # JSON Schema for product records
   cookbook/              # Step-by-step guides
   docs/                 # Architecture docs + screenshot placeholders
-  tests/                # pytest test suite
+  tests/                # pytest test suite (101 tests)
 ```
 
 See [docs/architecture.md](docs/architecture.md) for a detailed system overview.
