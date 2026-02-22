@@ -1,14 +1,14 @@
 # Create Your Own Personalized Google Shops (Open Source)
 
-**10x Better, More Accurate, Tailored to Your Needs, No Sponsored Links**
+**Search 13+ Retailers with One API Key — No Ads, No Sponsored Links, No Tracking**
 
 ---
 
-An open-source pipeline that searches multiple retailers, normalizes product data into a single schema, scores and ranks results using a transparent algorithm, enriches the top picks with professional review summaries, and outputs everything to a spreadsheet and interactive web app.
+An open-source pipeline that searches **13+ retailers simultaneously** via [Nimble](https://nimbleway.com), normalizes product data into a single schema, scores and ranks results using a transparent algorithm, enriches the top picks with professional review summaries, and outputs everything to a spreadsheet and interactive web app.
 
 **No ads. No sponsored links. No tracking. Just the best products for _you_.**
 
-Currently focused on ergonomic and mechanical keyboards. Supports 13+ retailers via Nimble (Amazon, Walmart, Target, B&H, Home Depot, and more), plus direct integrations with Best Buy and Walmart APIs. Designed to be extended to any product category and any retailer.
+Currently focused on ergonomic and mechanical keyboards. With a single Nimble API key, searches Amazon, Walmart, Target, B&H, Home Depot, Staples, Office Depot, ASOS, Foot Locker, Kroger, Slickdeals, Sam's Club, and Walmart Canada — with new retailers added automatically as Nimble expands. Also supports direct Best Buy, Amazon, and Walmart API integrations. Designed to be extended to any product category.
 
 ## Why this exists
 
@@ -23,7 +23,7 @@ Google Shopping is full of sponsored listings. Affiliate sites bury real recomme
 ## What it does
 
 ```
-Retailers (Amazon, Best Buy, Walmart, BYO CSV)
+Nimble WSA (13+ retailers) + Best Buy API + Walmart API + BYO CSV
   |
   v
 Normalize -> Score & Rank -> Enrich with Pro Reviews -> Output
@@ -228,7 +228,7 @@ product-shopping-skill/
     schema.json         # JSON Schema for product records
   cookbook/              # Step-by-step guides
   docs/                 # Architecture docs + screenshot placeholders
-  tests/                # pytest test suite (101 tests)
+  tests/                # pytest test suite (117 tests)
 ```
 
 See [docs/architecture.md](docs/architecture.md) for a detailed system overview.
@@ -290,8 +290,8 @@ Example categories that would work well:
 
 ## Roadmap
 
-- [ ] **Live API integrations** — Best Buy API is free; Walmart and Amazon need approval
-- [ ] **More retailers** — Newegg, B&H, direct manufacturer stores
+- [x] **Live API integrations** — Nimble WSA provides live data from 13+ retailers with a single key
+- [x] **More retailers** — B&H, Target, Home Depot, Staples, and 8 more via Nimble dynamic discovery
 - [ ] **Price history tracking** — Watch prices over time, alert on drops
 - [ ] **AI-powered review analysis** — Use an LLM to summarize hundreds of user reviews
 - [ ] **Comparison view** — Side-by-side product comparison in the web app
@@ -312,7 +312,7 @@ The easiest ways to contribute:
 
 ## Legal & safety
 
-- **Respect Terms of Service.** This tool prefers official APIs. Direct scraping is intentionally not implemented for retailers that prohibit it.
+- **Respect Terms of Service.** This tool uses official APIs and Nimble's structured web scraping platform. Direct scraping is intentionally not implemented for retailers that prohibit it.
 - **Rate limiting.** All adapters include built-in request throttling.
 - **Your responsibility.** Users are responsible for complying with each retailer's ToS and applicable laws.
 - **No affiliate links.** Product URLs are direct links to retailer pages. We don't earn commissions.
