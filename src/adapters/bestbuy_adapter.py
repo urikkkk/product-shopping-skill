@@ -30,6 +30,8 @@ class BestBuyAdapter(BaseAdapter):
 
     name = "bestbuy"
     _min_delay = 0.5
+    _env_vars = ["BESTBUY_API_KEY"]
+    _setup_url = "https://developer.bestbuy.com/"
 
     def search(
         self,
@@ -60,7 +62,6 @@ class BestBuyAdapter(BaseAdapter):
                     "page": "1",
                 },
             )
-            resp.raise_for_status()
             data = resp.json()
             for item in data.get("products", []):
                 products.append(
